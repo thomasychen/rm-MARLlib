@@ -1,0 +1,10 @@
+0 # auxiliary node
+(1, 2,  'by',  1) #Yellow button is pressed
+(2, 2,  'True',  0) #state 3 is an absorbing state
+(3, 4,  'bg',  1) #Green button is pressed
+(4, 4,  'True',  0) #state 3 is an absorbing state
+(5, 6,  'br',  1) #Red button is pressed
+(6, 6,  'True',  0) #state 3 is an absorbing state
+(0, 1, "to_rm1", 0) # Connect to RM 1
+(0, 3, "to_rm2", 0) # Connect to RM 2
+(0, 5, "to_rm3", 0) # Connect to RM 3

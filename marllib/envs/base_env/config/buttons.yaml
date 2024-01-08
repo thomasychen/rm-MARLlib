@@ -1,0 +1,11 @@
+env: buttons
+
+env_args:
+  max_episode_length: 1000
+  initial_rm_states: [1,3,5]
+  joint_rm_file: "/Users/thomaschen/rm-MARLlib/marllib/envs/base_env/config/buttons_aux_rm.txt"
+
+mask_flag: False
+global_state_flag: False
+opp_action_in_cc: True
+agent_level_batch_update: False

@@ -161,3 +161,11 @@ try:
     ENV_REGISTRY["sisl"] = RLlibSISL
 except Exception as e:
     ENV_REGISTRY["sisl"] = str(e)
+
+try:
+    from marllib.envs.base_env.buttons import RLlibButtons
+
+    ENV_REGISTRY['buttons'] = RLlibButtons
+
+except Exception as e:
+    ENV_REGISTRY["buttons"] = str(e)
