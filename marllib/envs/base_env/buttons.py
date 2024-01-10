@@ -10,11 +10,12 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from gym.spaces import Dict, Tuple, Discrete, Box
 
 
+
 policy_mapping_dict = {
     "all_scenario": {
         "description": "buttons all scenarios",
         "team_prefix": ("agent_",),
-        "all_agents_one_policy": False,
+        "all_agents_one_policy": True,
         "one_agent_one_policy": True,
     },
 }
@@ -55,8 +56,8 @@ class RLlibButtons(MultiAgentEnv):
         )})
         self.agent_mdp_states = {agent: self.envs[agent].get_initial_state() for agent in self.agents}
         self.agent_rm_states = {self.agents[i]: self.initial_rm_states[i] for i in range(self.num_agents)}
-        obs = self.reset()
-        print(obs)
+        # obs = self.reset()
+        # print(obs)
 
 
     def reset(self):
@@ -121,7 +122,7 @@ class RLlibButtons(MultiAgentEnv):
         }
         return env_info
     
-    def assign_rm_starts(self, new_assignment):
+    def assign_rm_states(self, new_assignment):
         self.initial_rm_states = new_assignment
 
 """

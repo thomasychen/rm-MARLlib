@@ -59,10 +59,10 @@ Details can be found https://github.com/semitable/robotic-warehouse#naming-schem
 
 from marllib import marl
 
-env = marl.make_env(environment_name="buttons", map_name='all_scenarios')
+env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
 
 # ippo = marl.algos.ippo(hyperparam_source="common")
-ippo = marl.algos.iql(hyperparam_source="common")
+ippo = marl.algos.ippo(hyperparam_source="common")
 
 model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
 

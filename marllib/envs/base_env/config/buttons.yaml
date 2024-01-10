@@ -3,7 +3,8 @@ env: buttons
 env_args:
   max_episode_length: 1000
   initial_rm_states: [1,3,5]
-  joint_rm_file: "/Users/thomaschen/rm-MARLlib/marllib/envs/base_env/config/buttons_aux_rm.txt"
+  joint_rm_file: "/Users/nikhil/Desktop/RL_Research/marllib/envs/base_env/config/buttons_rm/buttons_aux_rm.txt"
+  team_rm_file: "/Users/nikhil/Desktop/RL_Research/marllib/envs/base_env/config/buttons_rm/team_buttons_rm.txt"
 
 mask_flag: False
 global_state_flag: False

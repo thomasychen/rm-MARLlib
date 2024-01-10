@@ -133,3 +133,12 @@ try:
     COOP_ENV_REGISTRY["sisl"] = RLlibSISL_FCOOP
 except Exception as e:
     COOP_ENV_REGISTRY["sisl"] = str(e)
+
+try:
+    from marllib.envs.global_reward_env.buttons_fcoop import RLlibBUTTONS_FCOOP
+
+    COOP_ENV_REGISTRY['buttons'] = RLlibBUTTONS_FCOOP
+
+except Exception as e:
+    COOP_ENV_REGISTRY["buttons"] = str(e)
+

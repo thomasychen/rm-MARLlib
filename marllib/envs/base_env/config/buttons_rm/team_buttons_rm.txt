@@ -1,0 +1,22 @@
+0 # initial state 
+(0, 1, 'by', 0) # Yellow button is pressed 1st
+(0, 2, 'bg', 0) # Green button is pressed 1st
+(0, 3, 'br', 0) # Red button is pressed 1st
+(1, 4, 'bg', 0) # Green button is pressed 2nd
+(1, 5, 'br', 0) # Red button is pressed 2nd
+(2, 6, 'by', 0) # Yellow button is pressed 2nd
+(2, 7, 'br', 0) # Red button is pressed 2nd
+(3, 8, 'by', 0) # Yellow button is pressed 2nd
+(3, 9, 'bg', 0) # Green button is pressed 2nd
+(4, 10, 'br', 1) # Red button is pressed 3rd
+(5, 11, 'bg', 1) # Green button is pressed 3rd
+(6, 12, 'br', 1) # Red button is pressed 3rd
+(7, 13, 'by', 1) # Yellow button is pressed 3rd
+(8, 14, 'bg', 1) # Green button is pressed 3rd
+(9, 15, 'by', 1) # Yellow button is pressed 3rd
+(10, 10, 'True', 0) # 10 is a terminating state
+(11, 11, 'True', 0) # 11 is a terminating state
+(12, 12, 'True', 0) # 12 is a terminating state
+(13, 13, 'True', 0) # 13 is a terminating state
+(14, 14, 'True', 0) # 14 is a terminating state
+(15, 15, 'True', 0) # 15 is a terminating state
