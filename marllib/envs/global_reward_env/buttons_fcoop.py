@@ -5,17 +5,20 @@ import matplotlib.pyplot as plt
 
 from matplotlib.colors import ListedColormap
 
+
 import sys
 sys.path.append('../')
 sys.path.append('../../')
 
-from marllib.envs.base_env.buttons import RLlibButtons, buttons_config
+from marllib.envs.base_env.buttons import RLlibButtons, buttons_config, Actions
 
 class RLlibBUTTONS_FCOOP(RLlibButtons):
 
     def __init__(self, env_config):
-        super().__init__(env_config)
+        self.num_agents = 3
         self.env = HardMultiAgentButtonsEnv(env_config['team_rm_file'], self.num_agents, buttons_config())
+        super().__init__(env_config)
+        self.reset()
         # self.env = {self.agents[i]: HardMultiAgentButtonsEnv(self.env_config["team_rm_file"], i+1, HardMultiAgentButtonsEnv(), self.initial_rm_states) for i in range(self.num_agents)}
 
     def reset(self):
@@ -23,7 +26,7 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
         obs = {}
         for x in range(self.num_agents):
             obs["agent_%d" % x] = {
-                "obs": (self.env.get_initial_state(x), self.env.reward_machine.get_initial_state())
+                "obs": (self.env.get_initial_state(x), self.initial_rm_states[x])
             }
         # self.current_step = 0
         # for i in range(len(self.agents)):
@@ -35,7 +38,7 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
     def step(self, action_dict):
         rewards = {agent: 0 for agent in self.agents}
         obs = {}
-        terminated = {}
+        terminated = {agent: False for agent in self.agents}
         info = {}
 
         # get current s, a pair for team
@@ -44,10 +47,13 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
             s_team[i] = self.agent_mdp_states[agent]
         a_team = np.full(self.num_agents, -1, dtype=int)
 
+
         for i, (agent, value) in enumerate(sorted(action_dict.items())):
             a_team[i] = value
     
         r, l, s_team_next = self.env.environment_step(s_team, a_team)
+
+        rewards = {agent: r for agent in self.agents}
 
         projected_l_dict = {}
         for i, agent in enumerate(self.agents):
@@ -59,7 +65,6 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
             is_possible = False
             label = projected_l_dict[i]
 
-            print("bruh", label, agent)
             if label:
                 event = label[0]
                 is_possible = self.envs[agent].reward_machine.is_event_available(self.agent_rm_states[agent], event)
@@ -86,17 +91,18 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
             self.agent_mdp_states[agent] = s_team_next[i]
 
             obs[agent] = {"obs": (self.agent_mdp_states[agent], self.agent_rm_states[agent])}
-            terminated[agent] = self.envs[agent].reward_machine.is_terminal_state(self.agent_rm_states[agent])
 
 
             # update the agent's internal representation
             # a = testing_env.get_last_action(i)
             # print("projection dict", projected_l_dict[i])
             # agent_list[i].update_agent(s_team_next[i], r, projected_l_dict[i], learning_params, tester.get_current_step(), update_q_function=False, evaluate_critic_loss=True)
-            
-        if all(terminated.values()) or self.current_step > self.episode_limit:
+        
+        terminated_list = [self.envs[agent].reward_machine.is_terminal_state(self.agent_rm_states[agent]) for agent in self.agents]
+
+        if all(terminated_list) or self.current_step > self.episode_limit:
+            terminated = {agent: True for agent in self.agents}
             terminated["__all__"] = True
-            rewards = {agent: r for agent in self.agents}
         else:
             terminated["__all__"] = False
         self.current_step += 1

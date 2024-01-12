@@ -59,17 +59,30 @@ Details can be found https://github.com/semitable/robotic-warehouse#naming-schem
 
 from marllib import marl
 
-env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
+
+test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
+env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
 
 # ippo = marl.algos.ippo(hyperparam_source="common")
 ippo = marl.algos.ippo(hyperparam_source="common")
-
 model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
 
-ippo.fit(env, model, stop={'episode_reward_mean': 2.95, 'timesteps_total': 1000000}, checkpoint_end = True)
+# num_epochs = 100
+
+# for i in range(num_epochs):
+
+#     ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 1000})
+
 
 # test_env = marl.make_env(environment_name="mpe", map_name="simple_spread", force_coop=True)
-# ippo.render(test_env, model, local_mode = True, restore_path = '/Users/thomaschen/rm-MARLlib/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_18b61_00000_0_2024-01-08_00-15-34/checkpoint_000020')
+ippo.render(test_env, model, local_mode = True, restore_path={'params_path': "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/params.json",  # experiment configuration
+                           'model_path': "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/checkpoint_000001/checkpoint-1"}, stop={"timesteps_total": 1000})
+
+print("BRUH", model)
+print(ippo.value_function())
+
+# restore_path = {"model_path": "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/checkpoint_000001", 
+#                                                                 "params_path": "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/params.json"}
 
 # # # prepare the environment academy_pass_and_shoot_with_keeper
 # # #env = marl.make_env(environment_name="hanabi", map_name="Hanabi-Very-Small")

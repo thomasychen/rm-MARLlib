@@ -56,9 +56,7 @@ class RLlibButtons(MultiAgentEnv):
         )})
         self.agent_mdp_states = {agent: self.envs[agent].get_initial_state() for agent in self.agents}
         self.agent_rm_states = {self.agents[i]: self.initial_rm_states[i] for i in range(self.num_agents)}
-        # obs = self.reset()
-        # print(obs)
-
+        self.reset()
 
     def reset(self):
         original_obs = [self.envs[agent].get_initial_state() for agent in self.agents]
@@ -105,7 +103,7 @@ class RLlibButtons(MultiAgentEnv):
         return obs, rewards, terminated, info
     
     def render(self):
-        for agent, env in self.envs:
+        for agent, env in self.envs.items():
             print(agent)
             env.show(self.agent_mdp_states[agent])
     
