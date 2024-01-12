@@ -56,53 +56,63 @@ Details can be found https://github.com/semitable/robotic-warehouse#naming-schem
 """
 
 
-
+import yaml
 from marllib import marl
+import os
+import time
+
+ray_path = "/Users/nikhil/Desktop/RL_Research/marllib/marl/ray/ray.yaml"
+checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/temp_checkpoints"
+# os.mkdir(checkpoint_folder)
+
+with open(ray_path, 'r') as ymlfile:
+    ray_config = yaml.safe_load(ymlfile)
+
+folder_name = f"{checkpoint_folder}/{time.time()}"
+
+ray_config['local_dir'] = folder_name
+with open(ray_path, 'w') as ymlfile:
+    yaml.dump(ray_config, ymlfile)
+
+num_epochs = 10
 
 
-test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
-env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
 
 # ippo = marl.algos.ippo(hyperparam_source="common")
-ippo = marl.algos.ippo(hyperparam_source="common")
-model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
 
-# num_epochs = 100
+latest_subdir = ""
+for i in range(num_epochs):
 
-# for i in range(num_epochs):
+    test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
+    env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
 
-#     ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 1000})
+    ippo = marl.algos.ippo(hyperparam_source="common")
+    model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
+
+    print("FITTING MODEL\n\n")
+    if i == 0:
+        ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
+    else:
+        ippo.render(env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",  # experiment configuration
+                           'model_path': f"{latest_subdir}/checkpoint_00000{i}/checkpoint-{i}"}, stop={"timesteps_total": 10000})
 
 
-ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 1000})
-print("TEST 2", ippo.config_dict)
+    # time.sleep(1)
+    # print("hello", f'{folder_name}/ippo_mlp_all_scenarios')
+
+    main_path = f'{folder_name}/ippo_mlp_all_scenarios'
+    all_subdirs = [os.path.join(main_path, d) for d in os.listdir(main_path) if os.path.isdir(os.path.join(main_path, d))]
+
+    latest_subdir = max(all_subdirs, key=os.path.getmtime)
+
+    test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
+    env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
+
+    ippo = marl.algos.ippo(hyperparam_source="common")
+    model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
+
+    print("TESTING MODEL\n\n")
+    ippo.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
+                           'model_path': f"{latest_subdir}/checkpoint_00000{i+1}/checkpoint-{i+1}"}, stop={"timesteps_total": 1000})
 
 
-# test_env = marl.make_env(environment_name="mpe", map_name="simple_spread", force_coop=True)
-# ippo.render(test_env, model, local_mode = True, restore_path={'params_path': "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/params.json",  # experiment configuration
-
-print("BRUH", model)
-print("critics", model[1].critics)
-print(model[1].value_function())
-
-# restore_path = {"model_path": "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/checkpoint_000001", 
-#                                                                 "params_path": "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/params.json"}
-
-# # # prepare the environment academy_pass_and_shoot_with_keeper
-# # #env = marl.make_env(environment_name="hanabi", map_name="Hanabi-Very-Small")
-# env = marl.make_env(environment_name="mpe", map_name="simple_spread", force_coop=True)
-
-# # can add extra env params. remember to check env configuration before use
-# # env = marl.make_env(environment_name='smac', map_name='3m', difficulty="6", reward_scale_rate=15)
-
-# # initialize algorithm and load hyperparameters
-# mappo = marl.algos.mappo(hyperparam_source="mpe")
-
-# # can add extra algorithm params. remember to check algo_config hyperparams before use
-# # mappo = marl.algos.MAPPO(hyperparam_source='common', use_gae=True,  batch_episode=10, kl_coeff=0.2, num_sgd_iter=3)
-
-# # build agent model based on env + algorithms + user preference if checked available
-# model = marl.build_model(env, mappo, {"core_arch": "mlp", "encode_layer": "128-256"})
-
-# # start learning + extra experiment settings if needed. remember to check ray.yaml before use
-# mappo.fit(env, model, stop={'episode_reward_mean': 2000, 'timesteps_total': 20000000}, share_policy='all')

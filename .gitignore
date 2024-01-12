@@ -163,3 +163,5 @@ cython_debug/
 
 .DS_Store
 exp_results/
+temp_checkpoints/
+examples/exp_results_2

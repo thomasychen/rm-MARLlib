@@ -34,8 +34,6 @@ from ray.tune.analysis import ExperimentAnalysis
 
 def restore_model(restore: Dict, exp: Dict):
     if restore is not None:
-        print(restore)
-        print("TEST", restore["params_path"])
 
         with open(restore["params_path"], 'r') as JSON:
             raw_exp = json.load(JSON)
