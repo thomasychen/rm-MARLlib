@@ -60,6 +60,7 @@ import yaml
 from marllib import marl
 import os
 import time
+import wandb
 
 ray_path = "/Users/nikhil/Desktop/RL_Research/marllib/marl/ray/ray.yaml"
 checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/temp_checkpoints"
