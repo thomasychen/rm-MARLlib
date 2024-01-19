@@ -58,6 +58,7 @@ Details can be found https://github.com/semitable/robotic-warehouse#naming-schem
 
 
 from marllib import marl
+from marllib.marl.algos.core.IL.ppo import IPPOTorchPolicy
 
 
 test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
@@ -75,15 +76,24 @@ model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
 
 
 ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 1000})
-print("TEST 2", ippo.config_dict)
+# print("TEST 2", ippo.config_dict)
+# print("BRUHHH", IPPOTorchPolicy)
+
+
+print("\n\n\nHELLO", model)
+policy = model[0].policy
+
+# Call value_function
+values = policy.value_function()
+print("BRUH", values)
 
 
 # test_env = marl.make_env(environment_name="mpe", map_name="simple_spread", force_coop=True)
 # ippo.render(test_env, model, local_mode = True, restore_path={'params_path': "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/params.json",  # experiment configuration
 
-print("BRUH", model)
-print("critics", model[1].critics)
-print(model[1].value_function())
+# print("BRUH", model)
+# print("critics", model[1].critics)
+# print(model[1].value_function())
 
 # restore_path = {"model_path": "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/checkpoint_000001", 
 #                                                                 "params_path": "/Users/nikhil/Desktop/RL_Research/examples/exp_results/ippo_mlp_all_scenarios/IPPOTrainer_buttons_all_scenarios_0f4a6_00000_0_2024-01-10_15-07-43/params.json"}

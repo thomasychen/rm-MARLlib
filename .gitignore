@@ -165,3 +165,5 @@ cython_debug/
 exp_results/
 temp_checkpoints/
 examples/exp_results_2
+good_scripts/wandb/
+new_temp_checkpoints/

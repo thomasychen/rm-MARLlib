@@ -106,7 +106,7 @@ def run_ippo(model: Any, exp: Dict, run: Dict, env: Dict,
     arch = exp["model_arch_args"]["core_arch"]
     RUNNING_NAME = '_'.join([algorithm, arch, map_name])
     model_path = restore_model(restore, exp)
-
+    
     results = tune.run(IPPOTrainer,
                        name=RUNNING_NAME,
                        checkpoint_at_end=exp['checkpoint_end'],

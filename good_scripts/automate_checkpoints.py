@@ -61,9 +61,35 @@ from marllib import marl
 import os
 import time
 import wandb
+import json
+
+experiment = "RLLib_buttons"
+wandb.init(project = experiment)
+
+wandb.define_metric("Steps (10k)")
+wandb.define_metric("Train Episode Reward Mean", step_metric="Steps (10k)")
+wandb.define_metric("Train Number of Steps Reward Achieved Mean", step_metric="Steps (10k)")
+
+wandb.define_metric("Test Epoch")
+wandb.define_metric("Test Episode Reward Mean", step_metric="Test Epoch")
+wandb.define_metric("Test Number of Steps Reward Achieved Mean", step_metric="Test Epoch")
+
+num_agents = 3
+# wandb.define_metric("Buttons Image", step_metric="Test Trajectory")
+
+for i in range(num_agents):
+    wandb.define_metric(f"Train Reward Mean Achieved for Agent {i}", step_metric="Steps (10k)")
+    wandb.define_metric(f"Test Reward Mean Achieved for Agent {i}", step_metric="Test Epoch")
+
+    wandb.define_metric(f"Train Critic Loss for Agent {i}", step_metric="Steps (10k)")
+    wandb.define_metric(f"Test Critic Loss for Agent {i}", step_metric="Test Epoch")
+
+    wandb.define_metric(f"Train Policy Loss for Agent {i}", step_metric="Steps (10k)")
+    wandb.define_metric(f"Test Policy Loss for Agent {i}", step_metric="Test Epoch")
+
 
 ray_path = "/Users/nikhil/Desktop/RL_Research/marllib/marl/ray/ray.yaml"
-checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/temp_checkpoints"
+checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/new_temp_checkpoints"
 # os.mkdir(checkpoint_folder)
 
 with open(ray_path, 'r') as ymlfile:
@@ -109,11 +135,49 @@ for i in range(num_epochs):
     test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
     env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
 
+    # wandb logging for train
+    json_dir = f"{latest_subdir}/result.json"
+    with open(json_dir, 'r') as file:
+        result_dict = json.load(file)
+    # print(f"\n\n{result_dict}")
+    # episode_len_mean, episode_reward_mean, ["info"]["learner"]["shared_policy"][]
+
+    for agent_n in range(num_agents):
+        wandb.log({f"Train Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
+                   f"Train Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
+                   f"Train Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
+                    "Train Steps (10k)": i + 1})
+        
+    wandb.log({'Train Episode Reward Mean': result_dict["episode_reward_mean"], 
+            'Train Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
+             "Train Steps (10k)": i + 1})
+
     ippo = marl.algos.ippo(hyperparam_source="common")
     model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
 
     print("TESTING MODEL\n\n")
     ippo.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
                            'model_path': f"{latest_subdir}/checkpoint_00000{i+1}/checkpoint-{i+1}"}, stop={"timesteps_total": 1000})
+    
+    # wandb logging for test
+
+    main_path = f'{folder_name}/ippo_mlp_all_scenarios'
+    all_subdirs = [os.path.join(main_path, d) for d in os.listdir(main_path) if os.path.isdir(os.path.join(main_path, d))]
+    latest_test_subdir = max(all_subdirs, key=os.path.getmtime)
+
+    json_dir = f"{latest_test_subdir}/result.json"
+    with open(json_dir, 'r') as file:
+        result_dict = json.load(file)
+    
+    for agent_n in range(num_agents):
+        wandb.log({f"Test Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
+                   f"Test Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
+                   f"Test Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
+                    "Test Epoch": i + 1})
+        
+    wandb.log({'Test Episode Reward Mean': result_dict["episode_reward_mean"], 
+            'Test Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
+             "Test Epoch": i + 1})
+
 
 
