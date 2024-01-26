@@ -5,11 +5,12 @@ from enum import Enum
 import sys
 sys.path.append('../')
 sys.path.append('../../')
+from pathlib import Path
 
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from gym.spaces import Dict, Tuple, Discrete, Box
 
-
+ROOT = Path(__file__).parent.parent.parent
 
 policy_mapping_dict = {
     "all_scenario": {

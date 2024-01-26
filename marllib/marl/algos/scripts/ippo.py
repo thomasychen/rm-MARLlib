@@ -118,6 +118,8 @@ def run_ippo(model: Any, exp: Dict, run: Dict, env: Dict,
                        progress_reporter=CLIReporter(),
                        local_dir=available_local_dir if exp["local_dir"] == "" else exp["local_dir"])
     
+    
+    
     # print(results.getattr())
 
     return results

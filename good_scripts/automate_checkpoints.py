@@ -62,6 +62,9 @@ import os
 import time
 import wandb
 import json
+from pathlib import Path
+
+ROOT = Path(__file__).parent.parent
 
 experiment = "RLLib_buttons"
 wandb.init(project = experiment)
@@ -88,8 +91,11 @@ for i in range(num_agents):
     wandb.define_metric(f"Test Policy Loss for Agent {i}", step_metric="Test Epoch")
 
 
-ray_path = "/Users/nikhil/Desktop/RL_Research/marllib/marl/ray/ray.yaml"
-checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/new_temp_checkpoints"
+ray_path = "/Users/thomaschen/rm-MARLlib/marllib/marl/ray/ray.yaml"
+checkpoint_folder = "/Users/thomaschen/rm-MARLlib/new_temp_checkpoints"
+
+# /RM-MARLLIB/marllib/marl/ray/ray.yaml"
+# checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/new_temp_checkpoints"
 # os.mkdir(checkpoint_folder)
 
 with open(ray_path, 'r') as ymlfile:
@@ -118,7 +124,8 @@ for i in range(num_epochs):
 
     print("FITTING MODEL\n\n")
     if i == 0:
-        ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
+        var = ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
+        import pdb; pdb.set_trace()
     else:
         ippo.render(env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",  # experiment configuration
                            'model_path': f"{latest_subdir}/checkpoint_00000{i}/checkpoint-{i}"}, stop={"timesteps_total": 10000})
