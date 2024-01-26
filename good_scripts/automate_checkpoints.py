@@ -64,7 +64,15 @@ import wandb
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).parent.parent
+# Utility functions
+# def find_root_directory(path):
+#     path = Path(path)
+#     for parent in path.parents:
+#         if not parent.parent:
+#             # Root directory reached
+#             return parent
+
+# ROOT = find_root_directory(Path.cwd())
 
 experiment = "RLLib_buttons"
 wandb.init(project = experiment)
@@ -90,9 +98,22 @@ for i in range(num_agents):
     wandb.define_metric(f"Train Policy Loss for Agent {i}", step_metric="Steps (10k)")
     wandb.define_metric(f"Test Policy Loss for Agent {i}", step_metric="Test Epoch")
 
+# Get the absolute path of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+relative_path_ray = os.path.join("..", "marllib", "marl", "ray", "ray.yaml")
+relative_path_checkpoint = os.path.join("..", "new_temp_checkpoints")
 
-ray_path = "/Users/thomaschen/rm-MARLlib/marllib/marl/ray/ray.yaml"
-checkpoint_folder = "/Users/thomaschen/rm-MARLlib/new_temp_checkpoints"
+# Combine to get the absolute path to the file
+ray_path = os.path.join(script_dir, relative_path_ray)
+checkpoint_folder = os.path.join(script_dir, relative_path_checkpoint)
+
+# Now you can use absolute_path to open the file or perform other operations
+# with open(absolute_path, 'r') as file:
+#     content = file.read()
+#     print(content)
+
+# ray_path = "/Users/thomaschen/rm-MARLlib/marllib/marl/ray/ray.yaml"
+# checkpoint_folder = "/Users/thomaschen/rm-MARLlib/new_temp_checkpoints"
 
 # /RM-MARLLIB/marllib/marl/ray/ray.yaml"
 # checkpoint_folder = "/Users/nikhil/Desktop/RL_Research/new_temp_checkpoints"
@@ -125,7 +146,6 @@ for i in range(num_epochs):
     print("FITTING MODEL\n\n")
     if i == 0:
         var = ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
-        import pdb; pdb.set_trace()
     else:
         ippo.render(env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",  # experiment configuration
                            'model_path': f"{latest_subdir}/checkpoint_00000{i}/checkpoint-{i}"}, stop={"timesteps_total": 10000})
