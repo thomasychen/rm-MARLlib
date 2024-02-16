@@ -63,40 +63,51 @@ import time
 import wandb
 import json
 from pathlib import Path
+import argparse
+from marllib.marl.algos.manager_utils.manager import Manager
+import numpy as np
+
+# to kill wandb
+# ps aux|grep wandb|grep -v grep | awk '{print $2}'|xargs kill -9
+
+wandb_flag = True
 
 # Utility functions
-# def find_root_directory(path):
-#     path = Path(path)
-#     for parent in path.parents:
-#         if not parent.parent:
-#             # Root directory reached
-#             return parent
+def find_root_directory(path):
+    path = Path(path)
+    for parent in path.parents:
+        if not parent.parent:
+            # Root directory reached
+            return parent
 
-# ROOT = find_root_directory(Path.cwd())
+ROOT = find_root_directory(Path.cwd())
 
-experiment = "RLLib_buttons"
-wandb.init(project = experiment)
+if wandb_flag:
+    experiment = "test_marl_lib"
+    wandb.init(project = experiment, entity="reinforce-learn")
 
-wandb.define_metric("Steps (10k)")
-wandb.define_metric("Train Episode Reward Mean", step_metric="Steps (10k)")
-wandb.define_metric("Train Number of Steps Reward Achieved Mean", step_metric="Steps (10k)")
+    wandb.define_metric("Train Steps (10k)")
+    wandb.define_metric("Train Episode Reward Mean", step_metric="Train Steps (10k)")
+    wandb.define_metric("Train Number of Steps Reward Achieved Mean", step_metric="Train Steps (10k)")
 
-wandb.define_metric("Test Epoch")
-wandb.define_metric("Test Episode Reward Mean", step_metric="Test Epoch")
-wandb.define_metric("Test Number of Steps Reward Achieved Mean", step_metric="Test Epoch")
+    wandb.define_metric("Test Epoch")
+    wandb.define_metric("Test Episode Reward Mean", step_metric="Test Epoch")
+    wandb.define_metric("Test Number of Steps Reward Achieved Mean", step_metric="Test Epoch")
 
 num_agents = 3
-# wandb.define_metric("Buttons Image", step_metric="Test Trajectory")
 
-for i in range(num_agents):
-    wandb.define_metric(f"Train Reward Mean Achieved for Agent {i}", step_metric="Steps (10k)")
-    wandb.define_metric(f"Test Reward Mean Achieved for Agent {i}", step_metric="Test Epoch")
+if wandb_flag:
+    # wandb.define_metric("Buttons Image", step_metric="Test Trajectory")
 
-    wandb.define_metric(f"Train Critic Loss for Agent {i}", step_metric="Steps (10k)")
-    wandb.define_metric(f"Test Critic Loss for Agent {i}", step_metric="Test Epoch")
+    for i in range(num_agents):
+        wandb.define_metric(f"Train Reward Mean Achieved for Agent {i}", step_metric="Train Steps (10k)")
+        wandb.define_metric(f"Test Reward Mean Achieved for Agent {i}", step_metric="Test Epoch")
 
-    wandb.define_metric(f"Train Policy Loss for Agent {i}", step_metric="Steps (10k)")
-    wandb.define_metric(f"Test Policy Loss for Agent {i}", step_metric="Test Epoch")
+        wandb.define_metric(f"Train Critic Loss for Agent {i}", step_metric="Train Steps (10k)")
+        wandb.define_metric(f"Test Critic Loss for Agent {i}", step_metric="Test Epoch")
+
+        wandb.define_metric(f"Train Policy Loss for Agent {i}", step_metric="Train Steps (10k)")
+        wandb.define_metric(f"Test Policy Loss for Agent {i}", step_metric="Test Epoch")
 
 # Get the absolute path of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -130,15 +141,19 @@ with open(ray_path, 'w') as ymlfile:
 
 num_epochs = 10
 
-
-
 # ippo = marl.algos.ippo(hyperparam_source="common")
+
 
 latest_subdir = ""
 for i in range(num_epochs):
 
-    test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
+    # test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
     env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
+
+    # definining permutations
+    if wandb_flag and i == 0:
+        for perm in Manager.perm_qs:
+            wandb.define_metric(f"Average Score for Permutation {perm}", step_metric="Train Steps (10k)")
 
     ippo = marl.algos.ippo(hyperparam_source="common")
     model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
@@ -160,7 +175,10 @@ for i in range(num_epochs):
     latest_subdir = max(all_subdirs, key=os.path.getmtime)
 
     test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
-    env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
+    # env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
+
+    ippo = marl.algos.ippo(hyperparam_source="common")
+    model = marl.build_model(test_env, ippo, model_preference={"core_arch": "mlp"})
 
     # wandb logging for train
     json_dir = f"{latest_subdir}/result.json"
@@ -168,19 +186,21 @@ for i in range(num_epochs):
         result_dict = json.load(file)
     # print(f"\n\n{result_dict}")
     # episode_len_mean, episode_reward_mean, ["info"]["learner"]["shared_policy"][]
+ 
 
-    for agent_n in range(num_agents):
-        wandb.log({f"Train Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
-                   f"Train Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
-                   f"Train Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
-                    "Train Steps (10k)": i + 1})
+    if wandb_flag:
+        for agent_n in range(num_agents):
+            wandb.log({f"Train Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
+                    f"Train Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
+                    f"Train Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
+                        "Train Steps (10k)": i + 1})
+            
+        wandb.log({'Train Episode Reward Mean': result_dict["episode_reward_mean"], 
+                'Train Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
+                "Train Steps (10k)": i + 1})
         
-    wandb.log({'Train Episode Reward Mean': result_dict["episode_reward_mean"], 
-            'Train Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
-             "Train Steps (10k)": i + 1})
-
-    ippo = marl.algos.ippo(hyperparam_source="common")
-    model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
+        for perm, all_qs in Manager.perm_qs.items():
+            wandb.log({f"Average Score for Permutation {perm}": np.mean(np.array(all_qs)), "Train Steps (10k)": i + 1})
 
     print("TESTING MODEL\n\n")
     ippo.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
@@ -195,16 +215,17 @@ for i in range(num_epochs):
     json_dir = f"{latest_test_subdir}/result.json"
     with open(json_dir, 'r') as file:
         result_dict = json.load(file)
-    
-    for agent_n in range(num_agents):
-        wandb.log({f"Test Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
-                   f"Test Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
-                   f"Test Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
-                    "Test Epoch": i + 1})
-        
-    wandb.log({'Test Episode Reward Mean': result_dict["episode_reward_mean"], 
-            'Test Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
-             "Test Epoch": i + 1})
+
+    if wandb_flag:
+        for agent_n in range(num_agents):
+            wandb.log({f"Test Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
+                    f"Test Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
+                    f"Test Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
+                        "Test Epoch": i + 1})
+            
+        wandb.log({'Test Episode Reward Mean': result_dict["episode_reward_mean"], 
+                'Test Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
+                "Test Epoch": i + 1})
 
 
 

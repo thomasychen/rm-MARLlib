@@ -7,16 +7,28 @@ from matplotlib.colors import ListedColormap
 
 
 import sys
+from pathlib import Path
+
 sys.path.append('../')
 sys.path.append('../../')
 
-from marllib.envs.base_env.buttons import RLlibButtons, buttons_config, Actions
+from marllib.envs.base_env.buttons import RLlibButtons, buttons_config, Actions, find_root_directory
+
 
 class RLlibBUTTONS_FCOOP(RLlibButtons):
 
     def __init__(self, env_config):
-        self.num_agents = 3
-        self.env = HardMultiAgentButtonsEnv(env_config['team_rm_file'], self.num_agents, buttons_config())
+
+        print("\n\n\hi")
+
+
+        self.ROOT = find_root_directory(Path.cwd())
+
+
+        self.num_agents = 3    
+        self.team_rm = os.path.join(self.ROOT, "marllib", "envs", "base_env", "config", "buttons_rm", env_config['team_rm_file'])
+        self.env = HardMultiAgentButtonsEnv(self.team_rm, self.num_agents, buttons_config())
+
         super().__init__(env_config)
         self.reset()
         # self.env = {self.agents[i]: HardMultiAgentButtonsEnv(self.env_config["team_rm_file"], i+1, HardMultiAgentButtonsEnv(), self.initial_rm_states) for i in range(self.num_agents)}
@@ -32,7 +44,7 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
         # for i in range(len(self.agents)):
         #     self.envs[self.agents[i]] = HardMultiAgentButtonsEnv(self.env_config["team_rm_file"], i+1, HardMultiAgentButtonsEnv(),self.initial_rm_states)
         # return obs
-        self.env = HardMultiAgentButtonsEnv(self.env_config['team_rm_file'], self.num_agents, buttons_config())
+        self.env = HardMultiAgentButtonsEnv(self.team_rm, self.num_agents, buttons_config())
         return obs
 
     def step(self, action_dict):
@@ -103,6 +115,7 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
         if all(terminated_list) or self.current_step > self.episode_limit:
             terminated = {agent: True for agent in self.agents}
             terminated["__all__"] = True
+            self.trajectory_done = True
         else:
             terminated["__all__"] = False
         self.current_step += 1

@@ -29,8 +29,7 @@ from ray.rllib.utils.typing import TensorType
 from ray.rllib.models.torch.torch_action_dist import TorchDistributionWrapper
 from ray.rllib.policy.sample_batch import SampleBatch
 import torch
-from marllib.marl.models.zoo.mlp.base_mlp import BaseMLP
-import pickle
+from marllib.marl.algos.manager_utils.model_saver import ModelSaver
 
 ###########
 ### PPO ###
@@ -60,16 +59,26 @@ def vf_preds_fetches(
     # Return value function outputs. VF estimates will hence be added to the
     # SampleBatches produced by the sampler(s) to generate the train batches
     # going into the loss function.
-    with open("/Users/thomaschen/rm-MARLlib/test_pkl.pkl", "wb") as file:
-        pickle.dump(model, file)
+    # import pdb; pdb.set_trace()
+    # with open("/Users/nikhil/Desktop/RL_Research/test_pkl.pkl", "wb") as file:
+    #     pickle.dump(model, file)
+    print("\n\n", input_dict["agent_index"][0])
     return {
         SampleBatch.VF_PREDS: model.value_function(),
     }
 
+# IPPOTorchPolicy = PPOTorchPolicy.with_updates(
+#     name="IPPOTorchPolicy",
+#     get_default_config=lambda: PPO_CONFIG,
+#     extra_action_out_fn=vf_preds_fetches,
+# )
+
+# test_manager = Manager()
+
 IPPOTorchPolicy = PPOTorchPolicy.with_updates(
     name="IPPOTorchPolicy",
     get_default_config=lambda: PPO_CONFIG,
-    extra_action_out_fn=vf_preds_fetches,
+    extra_action_out_fn = ModelSaver.dynamic_callback,# extra_action_out_fn=RLlibButtons.dynamic_callback
 )
 
 

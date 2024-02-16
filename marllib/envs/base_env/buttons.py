@@ -1,14 +1,25 @@
-import random, math, os
-import numpy as np
-from enum import Enum
-
 import sys
 sys.path.append('../')
 sys.path.append('../../')
+import random
+import math
+import os
+from enum import Enum
 from pathlib import Path
-
-from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from typing import Dict as typeDict, List, Optional
+import numpy as np
+import torch
 from gym.spaces import Dict, Tuple, Discrete, Box
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from ray.rllib.agents.ppo.ppo import PPOTrainer, DEFAULT_CONFIG as PPO_CONFIG
+from ray.rllib.policy.policy import Policy
+from ray.rllib.models.modelv2 import ModelV2
+from ray.rllib.utils.typing import TensorType
+from ray.rllib.models.torch.torch_action_dist import TorchDistributionWrapper
+from ray.rllib.policy.sample_batch import SampleBatch
+import itertools
+from marllib.marl.algos.manager_utils.manager import Manager
+
 
 ROOT = Path(__file__).parent.parent.parent
 
@@ -38,15 +49,39 @@ def buttons_config():
 
     return env_settings
 
+def find_root_directory(path):
+    path = Path(path).resolve()
+    for parent in path.parents:
+        if (parent / '.git').is_dir():
+            # Git repository root found
+            return parent
+    return None  # .git directory not found in any parent directories
+
 class RLlibButtons(MultiAgentEnv):
+    # call_back = Manager._nothing
+
+    # @staticmethod
+    # def dynamic_callback(*args, **kwargs):
+    #     return RLlibButtons.call_back(*args, **kwargs)
+
+    manager = None
+    env_config = None
+
     def __init__(self, env_config):
-        self.env_config = env_config
+        self.ROOT = find_root_directory(Path.cwd())
+        if not RLlibButtons.env_config:
+            RLlibButtons.env_config = env_config
+        self.env_config = RLlibButtons.env_config
+
         self.num_agents = 3
         self.current_step = 0
         self.episode_limit = self.env_config["max_episode_length"]
         self.agents = ["agent_{}".format(i) for i in range(self.num_agents)]
-        self.auxiliary_rm = self.env_config["joint_rm_file"]
+
         self.initial_rm_states = self.env_config["initial_rm_states"]
+
+        self.auxiliary_rm = os.path.join(self.ROOT, "marllib", "envs", "base_env", "config", "buttons_rm", self.env_config["joint_rm_file"])
+
         self.envs = {self.agents[i]: HardButtonsEnv(self.auxiliary_rm, i+1, buttons_config(), self.initial_rm_states) for i in range(self.num_agents)}
         self.action_space = Discrete(5)
         self.observation_space = Dict({"obs": Box(
@@ -57,10 +92,22 @@ class RLlibButtons(MultiAgentEnv):
         )})
         self.agent_mdp_states = {agent: self.envs[agent].get_initial_state() for agent in self.agents}
         self.agent_rm_states = {self.agents[i]: self.initial_rm_states[i] for i in range(self.num_agents)}
+
+        self.trajectory_done = False
+
+        RLlibButtons.manager = Manager(self.num_agents, self.env_config)
+        self.reset()
+
+    def is_done(self):
+        return self.trajectory_done
+    
+    def reassign_agents(self, new_assignment):
+        self.initial_rm_states = new_assignment
         self.reset()
 
     def reset(self):
         original_obs = [self.envs[agent].get_initial_state() for agent in self.agents]
+        self.initial_rm_states = self.env_config["initial_rm_states"]
         obs = {}
         for x in range(self.num_agents):
             obs["agent_%d" % x] = {
@@ -71,7 +118,7 @@ class RLlibButtons(MultiAgentEnv):
             self.agent_rm_states["agent_%d" % x] = self.initial_rm_states[x]
         self.current_step = 0
         for i in range(len(self.agents)):
-            self.envs[self.agents[i]] = HardButtonsEnv(self.env_config["joint_rm_file"], i+1, buttons_config(),self.initial_rm_states)
+            self.envs[self.agents[i]] = HardButtonsEnv(self.auxiliary_rm, i+1, buttons_config(),self.initial_rm_states)
         return obs
     
     def step(self, action_dict):
@@ -96,6 +143,12 @@ class RLlibButtons(MultiAgentEnv):
             
         if all(terminated.values()) or self.current_step > self.episode_limit:
             terminated["__all__"] = True
+            self.trajectory_done = True
+            initial_rm_states = self.initial_rm_states
+            mdp_states = [self.envs[agent].get_initial_state() for agent in self.agents]
+            RLlibButtons.manager.assign(initial_rm_states, mdp_states)
+            # self.manager.assign()
+
         else:
             terminated["__all__"] = False
 
