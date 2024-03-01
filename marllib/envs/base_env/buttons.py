@@ -77,6 +77,7 @@ class RLlibButtons(MultiAgentEnv):
         self.current_step = 0
         self.episode_limit = self.env_config["max_episode_length"]
         self.agents = ["agent_{}".format(i) for i in range(self.num_agents)]
+        self.agent_done = {i: False for i in self.agents}
 
         self.initial_rm_states = self.env_config["initial_rm_states"]
 
@@ -95,7 +96,9 @@ class RLlibButtons(MultiAgentEnv):
 
         self.trajectory_done = False
 
-        RLlibButtons.manager = Manager(self.num_agents, self.env_config)
+        RLlibButtons.manager = Manager(self.num_agents, self.env_config, self.envs)
+        Manager.call_back = RLlibButtons.manager.her_factory()
+
         self.reset()
 
     def is_done(self):
@@ -108,6 +111,7 @@ class RLlibButtons(MultiAgentEnv):
     def reset(self):
         original_obs = [self.envs[agent].get_initial_state() for agent in self.agents]
         self.initial_rm_states = self.env_config["initial_rm_states"]
+        self.agent_done = {agent: False for agent in self.agents}
         obs = {}
         for x in range(self.num_agents):
             obs["agent_%d" % x] = {
@@ -124,7 +128,7 @@ class RLlibButtons(MultiAgentEnv):
     def step(self, action_dict):
         rewards = {}
         obs = {}
-        terminated = {}
+        terminated = self.agent_done.copy()
         info = {}
         
         for agent, value in sorted(action_dict.items()):
@@ -138,15 +142,18 @@ class RLlibButtons(MultiAgentEnv):
             obs[agent] = {"obs": (s_next, self.agent_rm_states[agent])}
             rewards[agent] = r
             terminated[agent] = self.envs[agent].reward_machine.is_terminal_state(self.agent_rm_states[agent])
+            # if terminated[agent]:
+            #     self.agent_done[agent] = True
+            #     print(agent, "terminated")
         # if any(rewards.values()):
         #     print(rewards)
-            
         if all(terminated.values()) or self.current_step > self.episode_limit:
             terminated["__all__"] = True
             self.trajectory_done = True
             initial_rm_states = self.initial_rm_states
             mdp_states = [self.envs[agent].get_initial_state() for agent in self.agents]
             RLlibButtons.manager.assign(initial_rm_states, mdp_states)
+            # print("\n\n\nHELOOOOOOOO\n\n\n")
             # self.manager.assign()
 
         else:

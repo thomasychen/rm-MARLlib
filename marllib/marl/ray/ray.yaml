@@ -2,7 +2,7 @@ checkpoint_end: true
 checkpoint_freq: 100
 evaluation_interval: 50
 framework: torch
-local_dir: /Users/nikhil/Desktop/RL_Research/good_scripts/../new_temp_checkpoints/1708071246.646145
+local_dir: /Users/nikhil/Desktop/RL_Research/good_scripts/../new_temp_checkpoints/1709262532.209783
 local_mode: true
 num_cpus_per_worker: 1
 num_gpus: 0

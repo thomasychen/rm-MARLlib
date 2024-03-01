@@ -80,12 +80,12 @@ ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 1000})
 # print("BRUHHH", IPPOTorchPolicy)
 
 
-print("\n\n\nHELLO", model)
+# print("\n\n\nHELLO", model)
 policy = model[0].policy
 
 # Call value_function
 values = policy.value_function()
-print("BRUH", values)
+# print("BRUH", values)
 
 
 # test_env = marl.make_env(environment_name="mpe", map_name="simple_spread", force_coop=True)

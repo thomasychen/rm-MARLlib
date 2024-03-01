@@ -19,8 +19,6 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
 
     def __init__(self, env_config):
 
-        print("\n\n\hi")
-
 
         self.ROOT = find_root_directory(Path.cwd())
 

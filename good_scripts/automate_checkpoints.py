@@ -139,7 +139,7 @@ ray_config['local_dir'] = folder_name
 with open(ray_path, 'w') as ymlfile:
     yaml.dump(ray_config, ymlfile)
 
-num_epochs = 10
+num_epochs = 25
 
 # ippo = marl.algos.ippo(hyperparam_source="common")
 
@@ -163,7 +163,7 @@ for i in range(num_epochs):
         var = ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
     else:
         ippo.render(env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",  # experiment configuration
-                           'model_path': f"{latest_subdir}/checkpoint_00000{i}/checkpoint-{i}"}, stop={"timesteps_total": 10000})
+                           'model_path': f"{latest_subdir}/checkpoint_{i:06d}/checkpoint-{i}"}, stop={"timesteps_total": 10000})
 
 
     # time.sleep(1)
@@ -203,8 +203,9 @@ for i in range(num_epochs):
             wandb.log({f"Average Score for Permutation {perm}": np.mean(np.array(all_qs)), "Train Steps (10k)": i + 1})
 
     print("TESTING MODEL\n\n")
+    
     ippo.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
-                           'model_path': f"{latest_subdir}/checkpoint_00000{i+1}/checkpoint-{i+1}"}, stop={"timesteps_total": 1000})
+                           'model_path': f"{latest_subdir}/checkpoint_{i+1:06d}/checkpoint-{i+1}"}, stop={"timesteps_total": 1000})
     
     # wandb logging for test
 
