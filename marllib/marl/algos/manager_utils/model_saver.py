@@ -24,21 +24,32 @@ class ModelSaver:
     def dynamic_callback(*args, **kwargs):
         return ModelSaver.call_back(*args, **kwargs)
     
-    @staticmethod
-    def _nothing(
-        policy: Policy, input_dict: Dict[str, TensorType],
-        state_batches: List[TensorType], model: ModelV2,
-        action_dist: TorchDistributionWrapper) -> Dict[str, TensorType]:
-        return {
-            SampleBatch.VF_PREDS: model.value_function(),
-        }
+    # @staticmethod
+    # def _nothing(
+    #     policy: Policy, input_dict: Dict[str, TensorType],
+    #     state_batches: List[TensorType], model: ModelV2,
+    #     action_dist: TorchDistributionWrapper) -> Dict[str, TensorType]:
+    #     return {
+    #         SampleBatch.VF_PREDS: model.value_function(),
+    #     }
 
-    call_back = _nothing
+    @staticmethod
+    def new_nothing(*args, **kwargs):
+        return
+
+    call_back = new_nothing
 
     def __init__(self, id=0):
-        self.models = {}
+        self.model = {}
         self.model_input_dicts = {}
         self.id = id
+
+    def save_model(self, model, mac_func, state_batches, device):
+        self.model = model
+        self.mac_func = mac_func
+        self.state_batches = state_batches
+        self.device = device
+        
 
     def vf_preds_factory(self):
         def wrapper(policy: Policy, input_dict: Dict[str, TensorType],

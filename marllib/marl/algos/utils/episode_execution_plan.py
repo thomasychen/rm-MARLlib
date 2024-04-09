@@ -62,6 +62,7 @@ def episode_execution_plan(trainer: Trainer, workers: WorkerSet,
     # returned from the LocalReplay() iterator is passed to TrainOneStep to
     # take a SGD step, and then we decide whether to update the target network.
     post_fn = config.get("before_learn_on_batch") or (lambda b, *a: b)
+    print(post_fn)
 
     train_step_op = TrainOneStep(workers)
 

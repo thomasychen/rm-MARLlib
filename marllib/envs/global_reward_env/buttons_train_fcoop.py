@@ -57,7 +57,7 @@ def find_root_directory(path):
             return parent
     return None  # .git directory not found in any parent directories
 
-class RLlibButtons(MultiAgentEnv):
+class RLlibButtonsTrain(MultiAgentEnv):
     # call_back = Manager._nothing
 
     # @staticmethod
@@ -69,9 +69,9 @@ class RLlibButtons(MultiAgentEnv):
 
     def __init__(self, env_config):
         self.ROOT = find_root_directory(Path.cwd())
-        if not RLlibButtons.env_config:
-            RLlibButtons.env_config = env_config
-        self.env_config = RLlibButtons.env_config
+        if not RLlibButtonsTrain.env_config:
+            RLlibButtonsTrain.env_config = env_config
+        self.env_config = RLlibButtonsTrain.env_config
 
         self.num_agents = 3
         self.current_step = 0
@@ -96,8 +96,8 @@ class RLlibButtons(MultiAgentEnv):
 
         self.trajectory_done = False
 
-        RLlibButtons.manager = Manager(self.num_agents, self.env_config, self.envs)
-        Manager.call_back = RLlibButtons.manager.her_factory()
+        RLlibButtonsTrain.manager = Manager(self.num_agents, self.env_config, self.envs)
+        Manager.call_back = RLlibButtonsTrain.manager.her_factory()
 
         self.reset()
 
@@ -126,7 +126,7 @@ class RLlibButtons(MultiAgentEnv):
         return obs
     
     def step(self, action_dict):
-        print("bye\n\n\n")
+        # print("bye GANGY\n\n\n")
         rewards = {}
         obs = {}
         terminated = self.agent_done.copy()
@@ -153,8 +153,7 @@ class RLlibButtons(MultiAgentEnv):
             self.trajectory_done = True
             initial_rm_states = self.initial_rm_states
             mdp_states = [self.envs[agent].get_initial_state() for agent in self.agents]
-            
-            RLlibButtons.manager.assign(initial_rm_states, mdp_states)
+            RLlibButtonsTrain.manager.assign(initial_rm_states, mdp_states)
             # print("\n\n\nHELOOOOOOOO\n\n\n")
             # self.manager.assign()
 

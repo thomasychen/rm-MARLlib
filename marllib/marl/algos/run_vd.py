@@ -94,6 +94,7 @@ def run_vd(exp_info, env, model, stop=None):
             raise ValueError("illegal action space")
 
         n_agents = env_info["num_agents"]
+        print("\n\n\n\n" + str(n_agents) + "\n\n\n\n\n")
 
         if exp_info["share_policy"] == "all":
             obs_space = Tuple([GymDict(space_obs)] * n_agents)

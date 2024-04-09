@@ -37,12 +37,108 @@ from ray.rllib.agents.qmix.qmix_policy import _mac, _validate, _unroll_mac
 from ray.rllib.agents.dqn.dqn import GenericOffPolicyTrainer
 from ray.rllib.agents.qmix.qmix import DEFAULT_CONFIG
 from ray.rllib.policy.rnn_sequencing import chop_into_sequences
+from ray.rllib.agents.dqn.simple_q_torch_policy import SimpleQTorchPolicy
 
 from marllib.marl.models.zoo.rnn.jointQ_rnn import JointQRNN
 from marllib.marl.models.zoo.mlp.jointQ_mlp import JointQMLP
 
 from marllib.marl.models.zoo.mixer import QMixer, VDNMixer
 from marllib.marl.algos.utils.episode_execution_plan import episode_execution_plan
+from marllib.marl.algos.manager_utils.manager import Manager
+from marllib.marl.algos.manager_utils.model_saver import ModelSaver
+
+#### MODDED IMPORTS #####
+from ray.rllib.agents.trainer import with_common_config
+from ray.rllib.utils.typing import TrainerConfigDict
+
+
+###### MODS FOR IQL ########
+IQL_CONFIG = with_common_config({
+    # === QMix ===
+    # Mixing network. Either "qmix", "vdn", or None
+    "mixer": None,
+    # Size of the mixing network embedding
+    "mixing_embed_dim": 32,
+    # Whether to use Double_Q learning
+    "double_q": True,
+    # Optimize over complete episodes by default.
+    "batch_mode": "complete_episodes",
+
+    # === Exploration Settings ===
+    "exploration_config": {
+        # The Exploration class to use.
+        "type": "EpsilonGreedy",
+        # Config for the Exploration class' constructor:
+        "initial_epsilon": 1.0,
+        "final_epsilon": 0.02,
+        "epsilon_timesteps": 10000,  # Timesteps over which to anneal epsilon.
+
+        # For soft_q, use:
+        # "exploration_config" = {
+        #   "type": "SoftQ"
+        #   "temperature": [float, e.g. 1.0]
+        # }
+    },
+
+    # === Evaluation ===
+    # Evaluate with epsilon=0 every `evaluation_interval` training iterations.
+    # The evaluation stats will be reported under the "evaluation" metric key.
+    # Note that evaluation is currently not parallelized, and that for Ape-X
+    # metrics are already only reported for the lowest epsilon workers.
+    "evaluation_interval": None,
+    # Number of episodes to run per evaluation period.
+    "evaluation_num_episodes": 10,
+    # Switch to greedy actions in evaluation workers.
+    "evaluation_config": {
+        "explore": False,
+    },
+
+    # Number of env steps to optimize for before returning
+    "timesteps_per_iteration": 1000,
+    # Update the target network every `target_network_update_freq` steps.
+    "target_network_update_freq": 500,
+
+    # === Replay buffer ===
+    # Size of the replay buffer in batches (not timesteps!).
+    "buffer_size": 1000,
+
+    # === Optimization ===
+    # Learning rate for RMSProp optimizer
+    "lr": 0.0005,
+    # RMSProp alpha
+    "optim_alpha": 0.99,
+    # RMSProp epsilon
+    "optim_eps": 0.00001,
+    # If not None, clip gradients during optimization at this value
+    "grad_norm_clipping": 10,
+    # How many steps of the model to sample before learning starts.
+    "learning_starts": 1000,
+    # Update the replay buffer with this many samples at once. Note that
+    # this setting applies per-worker if num_workers > 1.
+    "rollout_fragment_length": 4,
+    # Size of a batched sampled from replay buffer for training. Note that
+    # if async_updates is set, then each worker returns gradients for a
+    # batch of this size.
+    "train_batch_size": 32,
+
+    # === Parallelism ===
+    # Number of workers for collecting samples with. This only makes sense
+    # to increase if your environment is particularly slow to sample, or if
+    # you"re using the Async or Ape-X optimizers.
+    "num_workers": 0,
+    # Whether to compute priorities on workers.
+    "worker_side_prioritization": False,
+    # Prevent iterations from going lower than this time span
+    "min_iter_time_s": 1,
+
+    # === Model ===
+    "model": {
+        "lstm_cell_size": 64,
+        "max_seq_len": 999999,
+    },
+    # Only torch supported so far.
+    "framework": "torch",
+})
 
 # original _unroll_mac for next observation is different from Pymarl.
 # thus we provide a new JointQLoss here
@@ -77,6 +173,7 @@ class JointQLoss(nn.Module):
                 next_action_mask,
                 state=None,
                 next_state=None):
+        # import pdb; pdb.set_trace();
         """Forward pass of the loss.
 
         Args:
@@ -286,11 +383,12 @@ class JointQPolicy(Policy):
                         explore=None,
                         timestep=None,
                         **kwargs):
+        # print("hi\n\n\n")
         explore = explore if explore is not None else self.config["explore"]
         obs_batch, action_mask, _ = self._unpack_observation(obs_batch)
         # We need to ensure we do not use the env global state
         # to compute actions
-
+        ModelSaver.dynamic_callback(self.model, _mac, state_batches, self.device)
         # Compute actions
         with torch.no_grad():
             q_values, hiddens = _mac(
@@ -301,6 +399,12 @@ class JointQPolicy(Policy):
                         np.array(s), dtype=torch.float, device=self.device)
                     for s in state_batches
                 ])
+            # print(q_values, obs_batch, [
+            #         torch.as_tensor(
+            #             np.array(s), dtype=torch.float, device=self.device).shape
+            #         for s in state_batches
+            #     ])
+            
             avail = torch.as_tensor(
                 action_mask, dtype=torch.float, device=self.device)
             masked_q_values = q_values.clone()
@@ -461,6 +565,31 @@ class JointQPolicy(Policy):
         self.set_weights(state)
         self.set_epsilon(state["cur_epsilon"])
 
+    @override(Policy)
+    def postprocess_trajectory(self,
+                                sample_batch,
+                                other_agent_batches=None,
+                                episode=None):
+        # Do all post-processing always with no_grad().
+        # Not using this here will introduce a memory leak
+        # in torch (issue #6962).
+        with torch.no_grad():
+            # # Call super's postprocess_trajectory first.
+            sample_batch = super().postprocess_trajectory(
+                sample_batch, other_agent_batches, episode)
+            import pdb;pdb.set_trace();
+            return sample_batch
+            # return Manager.dynamic_callback(self, sample_batch, other_agent_batches, episode)
+
+                
+    # @override(SimpleQTorchPolicy)
+    # def extra_action_out(self, input_dict, state_batches, model,
+    #                          action_dist):
+    #     import pdb; pdb.set_trace()
+    #     with self._no_grad_context():
+    #         stats_dict = ModelSaver.dynamic_callback(self, input_dict, state_batches, model, action_dist)
+    #     return self._convert_to_non_torch_type(stats_dict)
+
     def update_target(self):
         self.target_model.load_state_dict(self.model.state_dict())
         if self.mixer is not None:
@@ -529,11 +658,25 @@ class JointQPolicy(Policy):
         else:
             state = None
         return obs, action_mask, state
+    
+def validate_config(config: TrainerConfigDict) -> None:
+    # Add the `burn_in` to the Model's max_seq_len.
+    # Set the replay sequence length to the max_seq_len of the model.
+        # config["replay_sequence_length"] = \
+        #     config["burn_in"] + config["model"]["max_seq_len"]
 
+        def f(batch, workers, config):
+            import pdb;pdb.set_trace();
+            return batch
+
+        config["before_learn_on_batch"] = f
 
 JointQTrainer = GenericOffPolicyTrainer.with_updates(
     name="JointQ",
-    default_config=DEFAULT_CONFIG,
+    default_config=IQL_CONFIG,
     default_policy=JointQPolicy,
     get_policy_class=None,
-    execution_plan=episode_execution_plan)
+    execution_plan=episode_execution_plan, 
+    validate_config=validate_config,
+    )
+

@@ -11,6 +11,7 @@ from ray.rllib.policy.sample_batch import SampleBatch
 class Manager:
 
     perm_qs = defaultdict(list)
+    starting_qs = defaultdict(float)
 
     @staticmethod
     def dynamic_callback(*args, **kwargs):
@@ -63,15 +64,41 @@ class Manager:
         np.append(sample_batch["action_dist_inputs"], action_dist_inputs)
         np.append(sample_batch["action_logp"], action_logp)
 
+# def add_to_sample(sample_batch, obs, action, reward, done, info, eps_id, unroll_id, agent_id, vf_preds, action_dist_inputs, action_logp):
+#     # Assuming all inputs are numpy arrays and can be reshaped to (-1, 1)
+#     new_data = np.hstack([
+#         np.reshape(obs, (-1, 1)),
+#         np.reshape(action, (-1, 1)),
+#         np.reshape(reward, (-1, 1)),
+#         np.reshape(done, (-1, 1)),
+#         np.reshape(info, (-1, 1)),  # This might need special handling depending on what info contains
+#         np.reshape(eps_id, (-1, 1)),
+#         np.reshape(unroll_id, (-1, 1)),
+#         np.reshape(agent_id, (-1, 1)),
+#         np.reshape(vf_preds, (-1, 1)),
+#         np.reshape(action_dist_inputs, (-1, 1)),
+#         np.reshape(action_logp, (-1, 1))
+#     ])
+
+#     # Append new data column-wise
+#     if sample_batch["obs"].size == 0:
+#         sample_batch["obs"] = new_data
+#     else:
+#         sample_batch["obs"] = np.vstack([sample_batch["obs"], new_data])        
+
     @staticmethod
     def her(policy,sample_batch,other_agent_batches=None,episode=None, self=None):
+        print()
+        print("YAYYYYY \n\n\n\n")
 
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
 
         ## mess with sample batch before computing advantages
 
         assert(all([sample_batch["agent_index"][i] == sample_batch["agent_index"][0] for i in range(len(sample_batch["agent_index"]))]))
         assert(all([sample_batch["eps_id"][i] == sample_batch["eps_id"][0] for i in range(len(sample_batch["eps_id"]))]))
+
+        # for i in range
 
         agent_id = sample_batch["agent_index"][0]
 
@@ -143,10 +170,12 @@ class Manager:
         self.assignment_method = env_config["manager_assignment_method"]
         self.env_config = env_config
         self.envs = envs
+        self.start_qs = {}
 
         # print("BUTONSSS\n\n\n\n", self.ms)
 
-        ModelSaver.call_back = self.ms.vf_preds_factory()
+        # ModelSaver.call_back = self.ms.vf_preds_factory()
+        ModelSaver.call_back = self.ms.save_model
 
 
     def assign(self, initial_rm_states, mdp_states):
@@ -200,15 +229,34 @@ class Manager:
         for permutation in itertools.permutations(list(range(self.num_agents))):
             accumulator = 1 if multiply else 0
 
-            for i in range(len(permutation)):
-                
-                starting_rm_state = starting_rm_states[permutation[i]]
-                curr_state = np.row_stack(([mdp_states[i]], [starting_rm_state])).T
-                
+            obs_batch = [[[mdp_states[i], starting_rm_states[permutation[i]]] for i in range(len(permutation))]]
 
-                # self.ms.model_input_dicts[i]["obs"] = torch.tensor(curr_state)
-                # temp = self.ms.model_input_dicts[i]["obs"]
-                self.ms.model_input_dicts[i]["obs"] = {"obs": torch.tensor(curr_state)}
+            with torch.no_grad():
+                q_values, hiddens = self.ms.mac_func(
+                    self.ms.model,
+                    torch.as_tensor(
+                        obs_batch, dtype=torch.float, device=self.ms.device), [
+                        torch.as_tensor(
+                            np.array(s), dtype=torch.float, device=self.ms.device)
+                        for s in self.ms.state_batches
+                    ])
+            max_values = q_values.max(dim=2).values
+            res[tuple(permutation)] = max_values.prod() if multiply else max_values.sum()
+        return res
+            
+        
+
+            
+
+            # for i in range(len(permutation)):
+                
+            #     starting_rm_state = starting_rm_states[permutation[i]]
+            #     curr_state = np.row_stack(([mdp_states[i]], [starting_rm_state])).T
+
+            #     # self.ms.model_input_dicts[i]["obs"] = torch.tensor(curr_state)
+            #     # temp = self.ms.model_input_dicts[i]["obs"]
+            #     # import pdb; pdb.set_trace()
+            #     self.ms.model_input_dicts[i]["obs"] = {"obs": torch.tensor(curr_state)}
 
                 # if "obs" in self.ms.model_input_dicts[i]["obs"]:
                 #     self.ms.model_input_dicts[i]["obs"]["obs"] = torch.tensor(curr_state)
@@ -217,16 +265,16 @@ class Manager:
 
 
                 # self.model_input_dicts[i]["obs"]["obs"] = torch.tensor(curr_state)
-                self.ms.models[i].forward(self.ms.model_input_dicts[i], [], None)
-                # self.models[i].forward(self.model_input_dicts[i], [])
+        #         self.ms.models[i].forward(self.ms.model_input_dicts[i], [], None)
+        #         # self.models[i].forward(self.model_input_dicts[i], [])
 
-                value = self.ms.models[i].value_function().item()
+        #         value = self.ms.models[i].value_function().item()
 
-                if multiply:
-                    accumulator *= value
-                else:
-                    accumulator += value
+        #         if multiply:
+        #             accumulator *= value
+        #         else:
+        #             accumulator += value
             
-            res[tuple(permutation)] = accumulator
-        return res
+        #     res[tuple(permutation)] = accumulator
+        # return res
 

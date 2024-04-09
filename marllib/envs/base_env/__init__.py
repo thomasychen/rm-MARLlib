@@ -169,3 +169,13 @@ try:
 
 except Exception as e:
     ENV_REGISTRY["buttons"] = str(e)
+
+
+### JUST TO GET PAST ASSERTION
+try:
+    from marllib.envs.global_reward_env.buttons_train_fcoop import RLlibButtonsTrain
+
+    ENV_REGISTRY['buttons_train'] = RLlibButtonsTrain
+
+except Exception as e:
+    ENV_REGISTRY["buttons_train"] = str(e)

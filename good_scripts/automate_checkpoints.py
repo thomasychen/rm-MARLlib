@@ -70,7 +70,7 @@ import numpy as np
 # to kill wandb
 # ps aux|grep wandb|grep -v grep | awk '{print $2}'|xargs kill -9
 
-wandb_flag = True
+wandb_flag = False
 
 # Utility functions
 def find_root_directory(path):
@@ -148,28 +148,28 @@ latest_subdir = ""
 for i in range(num_epochs):
 
     # test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
-    env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
+    env = marl.make_env(environment_name="buttons_train", map_name='all_scenarios', force_coop=True)
 
     # definining permutations
     if wandb_flag and i == 0:
         for perm in Manager.perm_qs:
             wandb.define_metric(f"Average Score for Permutation {perm}", step_metric="Train Steps (10k)")
 
-    ippo = marl.algos.ippo(hyperparam_source="common")
-    model = marl.build_model(env, ippo, model_preference={"core_arch": "mlp"})
+    iql = marl.algos.iql(hyperparam_source="common")
+    model = marl.build_model(env, iql, model_preference={"core_arch": "mlp"})
 
     print("FITTING MODEL\n\n")
     if i == 0:
-        var = ippo.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
+        var = iql.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
     else:
-        ippo.render(env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",  # experiment configuration
+        iql.render(env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",  # experiment configuration
                            'model_path': f"{latest_subdir}/checkpoint_{i:06d}/checkpoint-{i}"}, stop={"timesteps_total": 10000})
 
 
     # time.sleep(1)
     # print("hello", f'{folder_name}/ippo_mlp_all_scenarios')
 
-    main_path = f'{folder_name}/ippo_mlp_all_scenarios'
+    main_path = f'{folder_name}/iql_mlp_all_scenarios'
     all_subdirs = [os.path.join(main_path, d) for d in os.listdir(main_path) if os.path.isdir(os.path.join(main_path, d))]
 
     latest_subdir = max(all_subdirs, key=os.path.getmtime)
@@ -177,8 +177,8 @@ for i in range(num_epochs):
     test_env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=True)
     # env = marl.make_env(environment_name="buttons", map_name='all_scenarios', force_coop=False)
 
-    ippo = marl.algos.ippo(hyperparam_source="common")
-    model = marl.build_model(test_env, ippo, model_preference={"core_arch": "mlp"})
+    iql= marl.algos.iql(hyperparam_source="common")
+    model = marl.build_model(test_env, iql, model_preference={"core_arch": "mlp"})
 
     # wandb logging for train
     json_dir = f"{latest_subdir}/result.json"
@@ -189,11 +189,11 @@ for i in range(num_epochs):
  
 
     if wandb_flag:
-        for agent_n in range(num_agents):
-            wandb.log({f"Train Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
-                    f"Train Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
-                    f"Train Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
-                        "Train Steps (10k)": i + 1})
+        # for agent_n in range(num_agents):
+        #     wandb.log({f"Train Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
+        #             f"Train Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
+        #             f"Train Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
+        #                 "Train Steps (10k)": i + 1})
             
         wandb.log({'Train Episode Reward Mean': result_dict["episode_reward_mean"], 
                 'Train Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],
@@ -204,12 +204,12 @@ for i in range(num_epochs):
 
     print("TESTING MODEL\n\n")
     
-    ippo.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
+    iql.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
                            'model_path': f"{latest_subdir}/checkpoint_{i+1:06d}/checkpoint-{i+1}"}, stop={"timesteps_total": 1000})
     
     # wandb logging for test
 
-    main_path = f'{folder_name}/ippo_mlp_all_scenarios'
+    main_path = f'{folder_name}/iql_mlp_all_scenarios'
     all_subdirs = [os.path.join(main_path, d) for d in os.listdir(main_path) if os.path.isdir(os.path.join(main_path, d))]
     latest_test_subdir = max(all_subdirs, key=os.path.getmtime)
 
@@ -218,11 +218,11 @@ for i in range(num_epochs):
         result_dict = json.load(file)
 
     if wandb_flag:
-        for agent_n in range(num_agents):
-            wandb.log({f"Test Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
-                    f"Test Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
-                    f"Test Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
-                        "Test Epoch": i + 1})
+        # for agent_n in range(num_agents):
+        #     wandb.log({f"Test Reward Mean Achieved for Agent {agent_n}": result_dict["policy_reward_mean"][f"policy_{agent_n}"],
+        #             f"Test Critic Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["vf_loss"],
+        #             f"Test Policy Loss for Agent {agent_n}": result_dict["info"]["learner"][f"policy_{agent_n}"]["learner_stats"]["policy_loss"],
+        #                 "Test Epoch": i + 1})
             
         wandb.log({'Test Episode Reward Mean': result_dict["episode_reward_mean"], 
                 'Test Number of Steps Reward Achieved Mean': result_dict["episode_len_mean"],

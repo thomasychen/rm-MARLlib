@@ -142,3 +142,11 @@ try:
 except Exception as e:
     COOP_ENV_REGISTRY["buttons"] = str(e)
 
+try:
+    from marllib.envs.global_reward_env.buttons_train_fcoop import RLlibButtonsTrain
+
+    COOP_ENV_REGISTRY['buttons_train'] = RLlibButtonsTrain
+
+except Exception as e:
+    COOP_ENV_REGISTRY["buttons_train"] = str(e)
+

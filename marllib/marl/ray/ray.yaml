@@ -2,7 +2,7 @@ checkpoint_end: true
 checkpoint_freq: 100
 evaluation_interval: 50
 framework: torch
-local_dir: /Users/nikhil/Desktop/RL_Research/good_scripts/../new_temp_checkpoints/1709262532.209783
+local_dir: /Users/thomaschen/rm-MARLlib/good_scripts/../new_temp_checkpoints/1712636703.179241
 local_mode: true
 num_cpus_per_worker: 1
 num_gpus: 0
@@ -12,7 +12,7 @@ restore_path:
   model_path: ''
   params_path: ''
 seed: 321
-share_policy: individual
+share_policy: group
 stop_iters: 9999999
 stop_reward: 999999
 stop_timesteps: 2000000

@@ -1,4 +1,4 @@
-env: buttons
+env: buttons_train
 
 env_args:
   max_episode_length: 1000
@@ -14,3 +14,4 @@ mask_flag: False
 global_state_flag: False
 opp_action_in_cc: True
 agent_level_batch_update: False
+# local_dir: /Users/nikhil/Desktop/RL_Research/examples/exp_results_2
