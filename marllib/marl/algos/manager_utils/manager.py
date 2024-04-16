@@ -7,6 +7,7 @@ import wandb
 from collections import defaultdict
 from ray.rllib.evaluation.postprocessing import compute_advantages
 from ray.rllib.policy.sample_batch import SampleBatch
+from tqdm import tqdm
 
 class Manager:
 
@@ -50,19 +51,25 @@ class Manager:
         
         return wrapper
     
+
         
-    def add_to_batch(self, sample_batch, obs, action, reward, done, info, eps_id, unroll_id, agent_id, vf_preds, action_dist_inputs, action_logp):
+    # def add_to_batch(self, sample_batch, obs, next_obs, action, prev_action, reward, prev_reward, done, info, eps_id, unroll_id, t):
         np.append(sample_batch["obs"], obs)
+        np.append(sample_batch["new_obs"], next_obs)
         np.append(sample_batch["actions"], action)
+        np.append(sample_batch["prev_actions", prev_action])
         np.append(sample_batch["rewards"], reward)
+        np.append(sample_batch["prev_rewards"], prev_reward)
         np.append(sample_batch["dones"], done)
         np.append(sample_batch["infos"], info)
         np.append(sample_batch["eps_id"], eps_id)
         np.append(sample_batch["unroll_id"], unroll_id)
-        np.append(sample_batch["agent_index"], agent_id)
-        np.append(sample_batch[SampleBatch.VF_PREDS], vf_preds)
-        np.append(sample_batch["action_dist_inputs"], action_dist_inputs)
-        np.append(sample_batch["action_logp"], action_logp)
+        np.append(sample_batch["agent_index"], 0)
+        np.append(sample_batch["t"], t)
+        np.append(sample_batch["state_out_0"], np.zeros((self.num_agents, 256)))
+        np.append(sample_batch["state_in_0"], np.zeros((self.num_agents), 1), axis=1)
+    
+
 
 # def add_to_sample(sample_batch, obs, action, reward, done, info, eps_id, unroll_id, agent_id, vf_preds, action_dist_inputs, action_logp):
 #     # Assuming all inputs are numpy arrays and can be reshaped to (-1, 1)
@@ -84,80 +91,124 @@ class Manager:
 #     if sample_batch["obs"].size == 0:
 #         sample_batch["obs"] = new_data
 #     else:
-#         sample_batch["obs"] = np.vstack([sample_batch["obs"], new_data])        
+#         sample_batch["obs"] = np.vstack([sample_batch["obs"], new_data])       
+
+
+
+
+    ''' obs: num_s x 6
+        new_obs: 6
+        actions: 3
+        prev_actions: 3
+        rewards: 1
+        prev_rewards: 1
+        dones: 1
+        infos: {'_group_rewards': [0, 0, 0]} => list
+        eps_id: 1
+        unroll_id: 
+        agent_index: 1 but all 0s (maybe)
+        t: 1 in order starting at 0
+        state_in_0: 3x num_s
+        state_out_0: num_s x 3 x 256
+    ''' 
+    def add_to_batch(self, sample_batch, obs, next_obs, action, prev_action, reward, prev_reward, done, info, eps_id, unroll_id, t):
+        np.append(sample_batch["obs"], obs)
+        np.append(sample_batch["new_obs"], next_obs)
+        np.append(sample_batch["actions"], action)
+        np.append(sample_batch["prev_actions"], prev_action)
+        np.append(sample_batch["rewards"], reward)
+        np.append(sample_batch["prev_rewards"], prev_reward)
+        np.append(sample_batch["dones"], done)
+        np.append(sample_batch["infos"], info)
+        np.append(sample_batch["eps_id"], eps_id)
+        np.append(sample_batch["unroll_id"], unroll_id)
+        np.append(sample_batch["agent_index"], 0)
+        np.append(sample_batch["t"], t)
+        np.append(sample_batch["state_out_0"], np.zeros((self.num_agents, 256)))
 
     @staticmethod
     def her(policy,sample_batch,other_agent_batches=None,episode=None, self=None):
-        print()
-        print("YAYYYYY \n\n\n\n")
+        # print()
+        # print("YAYYYYY \n\n\n\n")
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         ## mess with sample batch before computing advantages
 
         assert(all([sample_batch["agent_index"][i] == sample_batch["agent_index"][0] for i in range(len(sample_batch["agent_index"]))]))
         assert(all([sample_batch["eps_id"][i] == sample_batch["eps_id"][0] for i in range(len(sample_batch["eps_id"]))]))
 
-        # for i in range
 
-        agent_id = sample_batch["agent_index"][0]
-
-        env = self.envs[f"agent_{int(agent_id)}"]
-        rm = env.reward_machine
-        obs = sample_batch["obs"]
-        actual_start_rm = obs[0][1]
-        unroll_id = sample_batch["unroll_id"][0]
-        ## optional safety: group batch by agent_id and rollout_id
-        for u in rm.U:
-            if not (u == actual_start_rm) and not (u in rm.T) and not (u == rm.u0):
-                eps_id = np.random.randint(1000000) # nikhil thinks we might collide
-                curr_rm_state = u
-                for i in range(len(sample_batch["agent_index"])-1):
-                    curr_mdp_state = obs[i][0]
-                    next_mdp_state = obs[i+1][0]
-                    new_l = env.get_mdp_label(curr_mdp_state, next_mdp_state, curr_rm_state)
-                    new_r = 0
-                    u_temp = curr_rm_state
-                    u2 = curr_rm_state
-                    for e in new_l:
-                        # Get the new reward machine state and the reward of this step
-                        u2 = rm.get_next_state(u_temp, e)
-                        new_r = new_r + rm.get_reward(u_temp, u2)
-                        # Update the reward machine state
-                        u_temp = u2
-
-                    done = rm.is_terminal_state(u2)# idk how to tell
-
-                    ## add new row to sample_batch
-                    self.add_to_batch(sample_batch, [next_mdp_state, u2], sample_batch["actions"][i+1], new_r, done, {}, eps_id, unroll_id, agent_id, 0, [0,0,0,0,0], 0)
-
-                    if done:
-                        break
-
-                    curr_rm_state = u2
+        observations = sample_batch["obs"]
+        new_observations = sample_batch["obs"]
+        actions = sample_batch['actions']
+        prev_actions = sample_batch['prev_actions']
+        unroll_id = sample_batch['unroll_id'][0]
         
-        completed = sample_batch["dones"][-1]
-        if completed:
-            last_r = 0.0
-        else:
-            last_r = sample_batch[SampleBatch.VF_PREDS][-1]
 
-        if "lambda" in policy.config:
-            train_batch = compute_advantages(
-                sample_batch,
-                last_r,
-                policy.config["gamma"],
-                policy.config["lambda"],
-                use_gae=policy.config["use_gae"])
-        else:
-            train_batch = compute_advantages(
-                rollout=sample_batch,
-                last_r=0.0,
-                gamma=policy.config["gamma"],
-                use_gae=False,
-                use_critic=False)
+        for t in tqdm(range(len(sample_batch["agent_index"])-1)):
+            fake_obs = [[] for _ in range(self.num_agents)]
+            fake_new_obs = [[] for _ in range(self.num_agents)]
+            fake_actions = [[] for _ in range(self.num_agents)]
+            fake_prev_actions = [[] for _ in range(self.num_agents)]
+            fake_rewards = [[] for _ in range(self.num_agents)]
+            fake_prev_rewards = [[] for _ in range(self.num_agents)]
+            fake_dones = [[] for _ in range(self.num_agents)]
+            fake_infos = [[] for _ in range(self.num_agents)]
+            # fake_t = [[] for _ in range(self.num_agents)]
+
+            for i in range(self.num_agents):
+                    env = self.envs[f"agent_{i}"]
+                    rm = env.reward_machine
+                    current_u = int(observations[t][i*2 + 1])
+                    s = int(observations[t][i*2])
+                    s_new = int(new_observations[t][i*2])
+                    a = int(actions[t][i])
+                    prev_a = int(prev_actions[t][i])
+                    
+
+                    for u in rm.U:
+                        if not (u == current_u) and not (u in rm.T) and not (u == rm.u0):
+                        # if not (u == current_u) and not (u in agent_list[i].rm.T):
+                            new_l = env.get_mdp_label(s, s_new, u)
+                            new_r = 0
+                            u_temp = u
+                            u2 = u
+                            for e in new_l:
+                                # Get the new reward machine state and the reward of this step
+                                u2 = rm.get_next_state(u_temp, e)
+                                new_r = new_r + rm.get_reward(u_temp, u2)
+                                # Update the reward machine state
+                                u_temp = u2
+                            done = rm.is_terminal_state(u2)
+                        
+                            fake_obs[i].append([s, u])
+                            fake_new_obs[i].append([s_new,u2])
+                            fake_actions[i].append(a)
+                            fake_prev_actions[i].append(prev_a)
+                            if not fake_rewards[i]:
+                                fake_prev_rewards[i].append(0)
+                            else:
+                                fake_prev_rewards[i].append(fake_rewards[i][-1])
+                            fake_rewards[i].append(new_r)
+                            fake_dones[i].append(done)
+                            fake_infos[i].append(new_r)
+
+            # for i in range(len(fake_obs[0])):
+            #     for j in range(len(fake_obs[1])):
+            #         for k in range(len(fake_obs[2])):
+            #             obs = fake_obs[0][i] + fake_obs[1][j] + fake_obs[2][k]
+            #             new_obs = fake_new_obs[0][i] + fake_new_obs[1][j] + fake_new_obs[2][k]
+            #             action = [fake_actions[0][i], fake_actions[1][j], fake_actions[2][k]]
+            #             prev_action = [fake_prev_actions[0][i], fake_prev_actions[1][j], fake_prev_actions[2][k]]
+            #             reward = int(fake_rewards[0][i] or fake_rewards[1][j] or fake_rewards[2][k])
+            #             prev_reward = int(fake_prev_rewards[0][i] or fake_prev_rewards[1][j] or fake_prev_rewards[2][k])
+            #             done = (fake_rewards[0][i] + fake_rewards[1][j] + fake_rewards[2][k]) //3
+            #             info = {"_group_rewards": [fake_rewards[0][i] , fake_rewards[1][j] , fake_rewards[2][k]]}
+            #             eps_id = np.random.randint(1000000)
+            #             self.add_to_batch(sample_batch, obs, new_obs, action, prev_action, reward, prev_reward, done, info, eps_id, unroll_id, t)
         
-        return train_batch
+        return sample_batch
 
 
     def __init__(self, num_agents, env_config, envs):

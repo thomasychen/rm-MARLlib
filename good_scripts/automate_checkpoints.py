@@ -66,11 +66,12 @@ from pathlib import Path
 import argparse
 from marllib.marl.algos.manager_utils.manager import Manager
 import numpy as np
+from marllib.marl.algos.core.VD.iql_vdn_qmix import JointQPolicy
 
 # to kill wandb
 # ps aux|grep wandb|grep -v grep | awk '{print $2}'|xargs kill -9
 
-wandb_flag = False
+wandb_flag = True
 
 # Utility functions
 def find_root_directory(path):
@@ -159,6 +160,7 @@ for i in range(num_epochs):
     model = marl.build_model(env, iql, model_preference={"core_arch": "mlp"})
 
     print("FITTING MODEL\n\n")
+    JointQPolicy.do_cer = True
     if i == 0:
         var = iql.fit(env, model, checkpoint_end=True, stop={"timesteps_total": 10000})
     else:
@@ -203,6 +205,7 @@ for i in range(num_epochs):
             wandb.log({f"Average Score for Permutation {perm}": np.mean(np.array(all_qs)), "Train Steps (10k)": i + 1})
 
     print("TESTING MODEL\n\n")
+    JointQPolicy.do_cer = False
     
     iql.render(test_env, model, local_mode = True, restore_path={'params_path': f"{latest_subdir}/params.json",
                            'model_path': f"{latest_subdir}/checkpoint_{i+1:06d}/checkpoint-{i+1}"}, stop={"timesteps_total": 1000})

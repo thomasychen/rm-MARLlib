@@ -47,7 +47,7 @@ class RLlibBUTTONS_FCOOP(RLlibButtons):
 
     def step(self, action_dict):
         # import pdb; pdb.set_trace();
-        print("bye\n\n\n")
+        # print("bye\n\n\n")
         rewards = {agent: 0 for agent in self.agents}
         obs = {}
         terminated = {agent: False for agent in self.agents}

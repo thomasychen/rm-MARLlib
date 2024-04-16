@@ -266,6 +266,7 @@ class JointQLoss(nn.Module):
 
 
 class JointQPolicy(Policy):
+    do_cer = True
 
     def __init__(self, obs_space, action_space, config):
         _validate(obs_space, action_space)
@@ -577,9 +578,11 @@ class JointQPolicy(Policy):
             # # Call super's postprocess_trajectory first.
             sample_batch = super().postprocess_trajectory(
                 sample_batch, other_agent_batches, episode)
-            import pdb;pdb.set_trace();
+            # import pdb;pdb.set_trace();
+            # return sample_batch
+            if self.do_cer:
+                return Manager.dynamic_callback(self, sample_batch, other_agent_batches, episode)
             return sample_batch
-            # return Manager.dynamic_callback(self, sample_batch, other_agent_batches, episode)
 
                 
     # @override(SimpleQTorchPolicy)
@@ -659,17 +662,17 @@ class JointQPolicy(Policy):
             state = None
         return obs, action_mask, state
     
-def validate_config(config: TrainerConfigDict) -> None:
-    # Add the `burn_in` to the Model's max_seq_len.
-    # Set the replay sequence length to the max_seq_len of the model.
-        # config["replay_sequence_length"] = \
-        #     config["burn_in"] + config["model"]["max_seq_len"]
+# def validate_config(config: TrainerConfigDict) -> None:
+#     # Add the `burn_in` to the Model's max_seq_len.
+#     # Set the replay sequence length to the max_seq_len of the model.
+#         # config["replay_sequence_length"] = \
+#         #     config["burn_in"] + config["model"]["max_seq_len"]
 
-        def f(batch, workers, config):
-            import pdb;pdb.set_trace();
-            return batch
+#         def f(batch, workers, config):
+#             import pdb;pdb.set_trace();
+#             return batch
 
-        config["before_learn_on_batch"] = f
+#         config["before_learn_on_batch"] = f
 
 JointQTrainer = GenericOffPolicyTrainer.with_updates(
     name="JointQ",
@@ -677,6 +680,6 @@ JointQTrainer = GenericOffPolicyTrainer.with_updates(
     default_policy=JointQPolicy,
     get_policy_class=None,
     execution_plan=episode_execution_plan, 
-    validate_config=validate_config,
+    validate_config=None,
     )
 
